@@ -2,3 +2,4 @@
 .DS_Store
 .env
 venv
+net/__pycache__
