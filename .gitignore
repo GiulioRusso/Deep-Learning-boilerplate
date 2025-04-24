@@ -2,4 +2,4 @@
 .DS_Store
 .env
 venv
-net/__pycache__
+**/__pycache__/
