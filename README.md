@@ -8,10 +8,13 @@ This project is a deep learning boilerplate designed to facilitate the developme
    git clone <repository_url>
    cd Deep-Learning-boilerplate
    ```
-2. Create a virtual environment (optional but recommended):
+2. Create a virtual environment with `python3` or `conda` as you prefere:
    ```sh
    python3 -m venv venv
    source venv/bin/activate
+   ```
+   ```sh
+   conda create --name venv
    ```
 3. Install dependencies based on your needs:
    ```sh
