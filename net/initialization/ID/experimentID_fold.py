@@ -3,7 +3,6 @@ import sys
 from typing import Tuple
 
 from net.initialization.utility.parameters_ID import parameters_ID
-from net.utility.msg.msg_error import msg_error
 
 
 def experimentID_fold(typeID: str,

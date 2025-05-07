@@ -7,7 +7,7 @@ parameters_default = {
     # ------- #
     # DATASET #
     # ------- #
-    'dataset': 'TruetaHospital',
+    'dataset': 'MyDataset',
     'num_classes': 10,
     'image_height': 512,
     'image_width': 512,

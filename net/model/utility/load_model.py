@@ -4,8 +4,6 @@ import torch
 from torch.optim import Adam, SGD
 from torch.optim.lr_scheduler import ReduceLROnPlateau, StepLR, CosineAnnealingWarmRestarts
 
-from net.utility.msg.msg_load_model_complete import msg_load_best_model_complete, msg_load_resume_model_complete
-
 
 def load_best_model(net: torch.nn.Module,
                     metrics_type: str,
@@ -23,10 +21,6 @@ def load_best_model(net: torch.nn.Module,
 
     # load state dict
     net.load_state_dict(load_model['net_state_dict'])
-
-    # msg load best model complete
-    msg_load_best_model_complete(metrics_type=metrics_type,
-                                 load_model=load_model)
 
 
 def load_resume_model(net: torch.nn.Module,
@@ -60,5 +54,3 @@ def load_resume_model(net: torch.nn.Module,
     # set resume seed
     torch.set_rng_state(rng_state_resume)
 
-    # msg load resume model complete
-    msg_load_resume_model_complete(load_model=load_model)
