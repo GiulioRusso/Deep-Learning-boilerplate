@@ -1,0 +1,10 @@
+# ----------------------- #
+# PATH CONFIGURATION FILE #
+# ----------------------- #
+
+dataset:
+  images: "/path/to/images/"
+  annotations: "/path/to/annotations/"
+  split: "/path/to/split/"
+
+experiment:

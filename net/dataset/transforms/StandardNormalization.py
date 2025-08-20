@@ -41,10 +41,11 @@ class StandardNormalization(object):
         transform = transforms.Normalize([self.mean, self.mean, self.mean], [self.std, self.std, self.std])
         image_normalized = transform(image)
 
+        # TODO: Adjust the sample based on your dataset class
+
         sample = {
             'filename': sample['filename'],
             'image': image_normalized,
-            'mask': sample['image_mask'],
             'annotation': sample['annotation'],
         }
 

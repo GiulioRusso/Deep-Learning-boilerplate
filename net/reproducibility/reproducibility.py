@@ -1,7 +1,8 @@
+import os
 import random
-
 import numpy as np
 import torch
+from lightning.pytorch import seed_everything
 
 
 def reproducibility(seed: int):
@@ -11,17 +12,17 @@ def reproducibility(seed: int):
     :param seed: seed
     """
 
-    # for torch
-    torch.manual_seed(seed)
+    # validate input
+    if not isinstance(seed, int) or seed < 0:
+        raise ValueError("Seed must be a non-negative integer")
 
-    # for numpy
-    np.random.seed(seed)
+    # set Python hash seed
+    os.environ['PYTHONHASHSEED'] = str(seed)
 
-    # for random
-    random.seed(seed)
+    # Lightning handles seeding
+    seed_everything(seed, workers=True, verbose=False)
 
-    # for cuda
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-    torch.backends.cudnn.enabled = False
+    # set cuDNN for deterministic behavior
+    if torch.cuda.is_available():
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False

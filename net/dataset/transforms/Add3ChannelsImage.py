@@ -26,10 +26,11 @@ class Add3ChannelsImage(object):
         image_3c[1, :, :] = image
         image_3c[2, :, :] = image
 
+        # TODO: Adjust the sample based on your dataset class
+
         sample = {
             'filename': sample['filename'],
             'image': image_3c,
-            'mask': sample['image_mask'],
             'annotation': sample['annotation'],
         }
 

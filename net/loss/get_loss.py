@@ -6,20 +6,19 @@ import torch
 from torch.nn import CrossEntropyLoss, BCEWithLogitsLoss
 from net.loss.MyFocalLoss import MyFocalLoss
 from net.loss.MySigmoidFocalLoss import MySigmoidFocalLoss
-from net.parameters.parameters_choices import parameters_choices
 
 
 def get_loss(loss: str,
-             device: torch.device,
              parser: argparse.Namespace) -> Union[CrossEntropyLoss, BCEWithLogitsLoss, MySigmoidFocalLoss, MyFocalLoss]:
     """
     Get loss
 
     :param loss: loss name
-    :param device: device
     :param parser: parser of parameters-parsing
     :return: criterion (loss)
     """
+
+    # TODO: Define the Loss function for your task
 
     # ------------------ #
     # CROSS ENTROPY LOSS #
@@ -49,6 +48,6 @@ def get_loss(loss: str,
                                 gamma=parser.gamma)
 
     else:
-        raise ValueError(f"Unknown loss in {__file__}. Choices are {parameters_choices['loss']}, but got {loss} instead")
+        raise ValueError(f"Unknown loss in {__file__}.Got {loss}.")
 
     return criterion

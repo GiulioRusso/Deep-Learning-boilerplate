@@ -4,8 +4,6 @@ from typing import Union, Iterator
 from torch.nn import Parameter
 from torch.optim import Adam, SGD
 
-from net.parameters.parameters_choices import parameters_choices
-
 
 def get_optimizer(net_parameters: Iterator[Parameter],
                   parser: argparse.Namespace) -> Union[Adam, SGD]:
@@ -33,6 +31,6 @@ def get_optimizer(net_parameters: Iterator[Parameter],
                         momentum=parser.lr_momentum)
 
     else:
-        raise ValueError(f"Unknown optimizer in {__file__}. Choices are {parameters_choices['optimizer']}, but got {parser.optimizer} instead")
+        raise ValueError(f"Unknown optimizer in {__file__}. Got {parser.optimizer}.")
 
     return optimizer

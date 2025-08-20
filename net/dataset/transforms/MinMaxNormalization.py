@@ -43,10 +43,11 @@ class MinMaxNormalization(object):
         transform = transforms.Normalize([self.min, self.min, self.min], [self.max - self.min, self.max - self.min, self.max - self.min])
         image_normalized = transform(image)
 
+        # TODO: Adjust the sample based on your dataset class
+
         sample = {
             'filename': sample['filename'],
             'image': image_normalized,
-            'mask': sample['image_mask'],
             'annotation': sample['annotation'],
         }
 

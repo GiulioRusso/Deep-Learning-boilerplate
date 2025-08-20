@@ -2,45 +2,28 @@ import os
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 
-from pandas import read_csv
-import numpy as np
-import time
 import torch
-from torch import nn
 from torch.utils.data import DataLoader
+import lightning as L
+from lightning.pytorch.loggers import TensorBoardLogger
 
-from net.parameters.parameters import parameters_parsing
-from net.initialization.ID.experimentID import experimentID
-from net.reproducibility.reproducibility import reproducibility
-from net.dataset.MyDataset import MyDataset
+from net.dataset.classes.MyDataset import MyDataset
 from net.dataset.dataset_split import dataset_split
-from net.initialization.init import initialization
-from net.dataset.utility.read_split import read_split
 from net.dataset.dataset_transforms import dataset_transforms
-from net.model.MyNetwork import MyNetwork
-from net.loss.get_loss import get_loss
-from net.optimizer.get_optimizer import get_optimizer
-from net.scheduler.get_scheduler import get_scheduler
-from net.initialization.dict.metrics import metrics_dict
-from net.evaluation.current_learning_rate import current_learning_rate
-from net.metrics.metrics_train import metrics_train_csv
-from net.metrics.show_metrics.show_metrics_train import show_metrics_train
-from net.train import train
-from net.validation import validation
-from net.evaluation.ROC_AUC import ROC_AUC
-from net.metrics.utility.my_notation import scientific_notation
-from net.plot.ROC_AUC_plot import ROC_AUC_plot
-from net.plot.loss_plot import loss_plot
-from net.plot.utility.figure_size import figure_size
-from net.model.utility.save_model import save_best_model, save_resume_model
-from net.resume.resume import resume
-from net.test import test
-from net.metrics.metrics_test import metrics_test_csv
-from net.metrics.show_metrics.show_metrics_test import show_metrics_test
-from net.model.utility.load_model import load_best_model
+from net.initialization.experiment_ID import experiment_ID
+from net.initialization.utility.get_yaml import get_yaml
+from net.model.LitModel import LitModel
+from net.parameters.parameters import parameters_parsing
+from net.reproducibility.reproducibility import reproducibility
+from net.utility.get_latest_version import get_latest_version
+from net.utility.logger import log_operation
 
 
 def main():
+    """
+    My Deep Learning Project
+    """
+
     print("| ============================ |\n"
           "|   MY DEEP LEARNING PROJECT   |\n"
           "| ============================ |\n")
@@ -49,36 +32,24 @@ def main():
     # PARAMETERS-PARSING #
     # ================== #
     # command line parameter parsing
-    parser = parameters_parsing()
+    parser = parameters_parsing(parameters_path=os.path.join("config.yaml", "parameters.yaml"))
 
     # ============== #
     # INITIALIZATION #
     # ============== #
-    print("\n---------------"
-          "\nINITIALIZATION:"
-          "\n---------------")
-
-    # experiment ID
-    experiment_ID, experiment_resume_ID = experimentID(parser=parser)
+    # experiment ID initialization
+    exp_ID = experiment_ID(parser=parser)
+    # experiment directories
+    exp_dir = os.path.join("experiments", exp_ID)
 
     # path initialization
-    path = initialization(network_name="MyNetwork",
-                          experiment_ID=experiment_ID,
-                          experiment_resume_ID=experiment_resume_ID,
-                          parser=parser)
-
-    # read split
-    data_split = read_split(path_split_case=path['dataset']['split'])
+    path = get_yaml(yaml_path=os.path.join("config.yaml", "paths.yaml"))
 
     # ====== #
     # DEVICE #
     # ====== #
-    print("\n-------"
-          "\nDEVICE:"
-          "\n-------")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.set_num_threads(parser.num_threads)
-    print("GPU device name: {}".format(torch.cuda.get_device_name(0)))
 
     # =============== #
     # REPRODUCIBILITY #
@@ -88,25 +59,17 @@ def main():
     # ============ #
     # LOAD DATASET #
     # ============ #
-    print("\n-------------"
-          "\nLOAD DATASET:"
-          "\n-------------")
-
     # load dataset
     dataset = MyDataset(images_dir=path['dataset']['images'],
                         annotations_dir=path['dataset']['annotations'],
                         filename_list=path['dataset']['list'],
                         transforms=None)
 
-    # TODO: define number of classes based on your task
-
-    num_classes = parser.num_classes
-
     # ============= #
     # DATASET SPLIT #
     # ============= #
     # subset dataset according to data split
-    dataset_train, dataset_val, dataset_test = dataset_split(data_split=data_split,
+    dataset_train, dataset_val, dataset_test = dataset_split(data_split=path['dataset']['split'],
                                                              dataset=dataset)
 
     # ================== #
@@ -115,7 +78,7 @@ def main():
     # original view
     train_transforms, val_transforms, test_transforms = dataset_transforms(parser=parser,
                                                                            normalization=parser.norm,
-                                                                           statistics_path=path['dataset']['statistics'])
+                                                                           statistics_path=os.path.join("config.yaml", "statistics.yaml"))
 
     # apply dataset transforms
     dataset_train.dataset.transforms = train_transforms
@@ -146,273 +109,104 @@ def main():
                                  num_workers=parser.num_workers,
                                  pin_memory=True)
 
-    # ============= #
-    # NETWORK MODEL #
-    # ============= #
-    # net
-    net = MyNetwork()
+    if parser.mode == 'train':
 
-    # data parallel
-    net = nn.DataParallel(module=net)
+        # ======== #
+        # TRAINING #
+        # ======== #
+        # model
+        model = LitModel(parser=parser)
 
-    # move net to device
-    net.to(device)
+        # logger: Lightning will create experiment/exp_ID/version_0
+        logger = TensorBoardLogger(save_dir="experiments", name=exp_ID)
 
-    # =========== #
-    # MODE: TRAIN #
-    # =========== #
-    if parser.mode in ['train', 'resume']:
+        # log
+        log_operation(logger.log_dir, mode="train", parser=parser)
 
-        # ========= #
-        # OPTIMIZER #
-        # ========= #
-        optimizer = get_optimizer(net_parameters=net.parameters(),
-                                  parser=parser)
+        # checkpoint callbacks come from the model (best + last)
+        checkpoint_callbacks = model._get_checkpoint_callbacks()
 
-        # ========= #
-        # SCHEDULER #
-        # ========= #
-        scheduler = get_scheduler(optimizer=optimizer,
-                                  parser=parser)
+        # trainer
+        trainer = L.Trainer(
+            max_epochs=parser.epochs,
+            logger=logger,
+            accelerator=device.type,
+            devices=torch.cuda.device_count(),
+            callbacks=checkpoint_callbacks,
+        )
 
-        # ========= #
-        # CRITERION #
-        # ========= #
-        criterion = get_loss(loss=parser.loss,
-                             device=device,
-                             parser=parser)
+        # fit
+        trainer.fit(model, dataloader_train, dataloader_val)
 
-        # ==================== #
-        # INIT METRICS (TRAIN) #
-        # ==================== #
-        metrics = metrics_dict(metrics_type='train')
+    elif parser.mode == 'resume':
 
-        # training epochs range
-        start_epoch_train = 1  # star train
-        stop_epoch_train = start_epoch_train + parser.epochs  # stop train
+        # ======== #
+        # RESUMING #
+        # ======== #
+        # pick the specified version from this experiment
+        version = get_latest_version(exp_dir=exp_dir) if parser.version == "latest" else parser.version
 
-        # ============ #
-        # MODE: RESUME #
-        # ============ #
-        if parser.mode in ['resume']:
-            # --------------- #
-            # RESUME TRAINING #
-            # --------------- #
-            start_epoch_train, stop_epoch_train = resume(experiment_ID=experiment_ID,
-                                                         net=net,
-                                                         optimizer=optimizer,
-                                                         scheduler=scheduler,
-                                                         path=path,
-                                                         parser=parser)
+        # last checkpoint path
+        last_ckpt = os.path.join(exp_dir, version, "checkpoints", "last.ckpt")
+        if not os.path.isfile(last_ckpt):
+            raise FileNotFoundError(f"Could not find last checkpoint at: {last_ckpt}")
 
-        # for each epoch
-        for epoch in range(start_epoch_train, stop_epoch_train):
+        # restore model weights
+        model = LitModel.load_from_checkpoint(checkpoint_path=last_ckpt, parser=parser)
 
-            # ======== #
-            # TRAINING #
-            # ======== #
-            print("\n---------"
-                  "\nTRAINING:"
-                  "\n---------")
-            time_train_start = time.time()
+        # continue logging into the SAME version folder
+        logger = TensorBoardLogger(save_dir="experiments", name=exp_ID, version=version)
 
-            loss = train(num_epoch=epoch,
-                         epochs=parser.epochs,
-                         net=net,
-                         num_classes=num_classes,
-                         dataloader=dataloader_train,
-                         optimizer=optimizer,
-                         scheduler=scheduler,
-                         criterion=criterion,
-                         device=device,
-                         parser=parser)
+        # log
+        log_operation(logger.log_dir, mode="resume", parser=parser, extra={"ckpt": last_ckpt})
 
-            time_train = time.time() - time_train_start
+        # checkpoint callbacks come from the model (best + last)
+        checkpoint_callbacks = model._get_checkpoint_callbacks()
 
-            # ========== #
-            # VALIDATION #
-            # ========== #
-            print("\n-----------"
-                  "\nVALIDATION:"
-                  "\n-----------")
-            time_val_start = time.time()
+        # trainer
+        trainer = L.Trainer(
+            max_epochs=parser.epochs,
+            logger=logger,
+            accelerator=device.type,
+            devices=torch.cuda.device_count(),
+            callbacks=checkpoint_callbacks,
+        )
 
-            validation(num_epoch=epoch,
-                       epochs=parser.epochs,
-                       net=net,
-                       dataloader=dataloader_val,
-                       classifications_path=path['classifications']['validation'],
-                       device=device)
+        # resume training from last.ckpt so optimizer/scheduler states are restored
+        trainer.fit(model, dataloader_train, dataloader_val, ckpt_path=last_ckpt)
 
-            time_val = time.time() - time_val_start
+    elif parser.mode == "test":
 
-            # ==================== #
-            # METRICS (VALIDATION) #
-            # ==================== #
-            time_metrics_val_start = time.time()
+        # ======= #
+        # TESTING #
+        # ======= #
+        # pick the latest version
+        version = get_latest_version(exp_dir=exp_dir) if parser.version == "latest" else parser.version
 
-            # TODO: modify the header based on your needs
+        # load best checkpoint for testing
+        best_ckpt = os.path.join(exp_dir, version, "checkpoints", "best.ckpt")
+        if not os.path.isfile(best_ckpt):
+            raise FileNotFoundError(f"Could not find best checkpoint at: {best_ckpt}")
 
-            # read classifications validation for evaluation (numpy array)
-            classifications_header = ["FILENAME", "PREDICTION", "SCORE", "ANNOTATION"]
-            classifications_validation = read_csv(filepath_or_buffer=path['classifications']['validation'], usecols=classifications_header).values
+        # restore model
+        model = LitModel.load_from_checkpoint(checkpoint_path=best_ckpt, parser=parser)
 
-            # TODO: evaluate the metrics you need
+        # log into the SAME version folder so test metrics land beside train/val
+        logger = TensorBoardLogger(save_dir="experiments", name=exp_ID, version=version)
 
-            # compute ROC AUC
-            ROC_AUC_val = ROC_AUC(classifications=classifications_validation)
+        # log
+        log_operation(logger.log_dir, mode="test", parser=parser, extra={"ckpt": best_ckpt})
 
-            # =============== #
-            # PLOT VALIDATION #
-            # =============== #
-            print("\n----------------"
-                  "\nPLOT VALIDATION:"
-                  "\n----------------")
+        # trainer
+        trainer = L.Trainer(logger=logger, accelerator=device.type)
 
-            # get current learning rate
-            last_learning_rate = current_learning_rate(scheduler=scheduler,
-                                                       optimizer=optimizer,
-                                                       parser=parser)
+        # run test
+        trainer.test(model, dataloaders=dataloader_test)
 
-            time_metrics_val = time.time() - time_metrics_val_start
+    else:
+        raise ValueError(f"Unknown mode type in {__file__}. Got {parser.mode}")
 
-            # TODO: keep track of your metrics
-
-            # update performance
-            metrics['ticks'].append(epoch)
-            metrics['loss'].append(loss)
-            metrics['learning_rate'].append(scientific_notation(number=last_learning_rate))
-            metrics['ROC_AUC'].append(ROC_AUC_val)
-            metrics['time']['train'].append(time_train)
-            metrics['time']['validation'].append(time_val)
-            metrics['time']['metrics'].append(time_metrics_val)
-
-            # TODO: update metrics file and print
-
-            # metrics-train.csv
-            metrics_train_csv(metrics_path=path['metrics']['train'],
-                              metrics=metrics)
-
-            # show metrics train
-            show_metrics_train(metrics=metrics)
-
-            # =============== #
-            # SAVE BEST MODEL #
-            # =============== #
-            print("\n----------------"
-                  "\nSAVE BEST MODEL:"
-                  "\n----------------")
-
-            # TODO: save the model based on your metrics
-            # save best-model with ROC AUC
-            if (epoch - 1) == np.argmax(metrics['ROC_AUC']):
-                save_best_model(epoch=epoch,
-                                net=net,
-                                metrics=metrics['ROC_AUC'],
-                                metrics_type='ROC AUC',
-                                optimizer=optimizer,
-                                scheduler=scheduler,
-                                path=path['models']['best'])
-
-            # save resume-model
-            save_resume_model(epoch=epoch,
-                              net=net,
-                              ROC_AUC=metrics['ROC_AUC'][-1],
-                              optimizer=optimizer,
-                              scheduler=scheduler,
-                              path=path['models']['resume'])
-
-            # ========== #
-            # PLOT TRAIN #
-            # ========== #
-            print("\n-----------"
-                  "\nPLOT TRAIN:"
-                  "\n-----------")
-
-            # figure size
-            figsize_x, figsize_y = figure_size(epochs=parser.epochs)
-
-            # epochs ticks
-            epochs_ticks = np.arange(1, parser.epochs + 1, step=1)
-
-            # loss plot
-            loss_plot(figsize=(figsize_x, figsize_y),
-                      title="LOSS",
-                      experiment_ID=experiment_ID,
-                      ticks=metrics['ticks'],
-                      epochs_ticks=epochs_ticks,
-                      loss=metrics['loss'],
-                      loss_path=path['plots']['train']['loss'])
-
-            # ROC AUC plot
-            ROC_AUC_plot(figsize=(figsize_x, figsize_y),
-                         title="ROC AUC",
-                         experiment_ID=experiment_ID,
-                         ticks=metrics['ticks'],
-                         epochs_ticks=epochs_ticks,
-                         ROC_AUC=metrics['ROC_AUC'],
-                         ROC_AUC_path=path['plots']['validation']['ROC_AUC'])
-
-        # ========== #
-        # MODE: TEST #
-        # ========== #
-        if parser.mode in ['test']:
-            # =================== #
-            # INIT METRICS (TEST) #
-            # =================== #
-            metrics = metrics_dict(metrics_type='test')
-
-            # =============== #
-            # LOAD BEST MODEL #
-            # =============== #
-            print("\n----------------"
-                  "\nLOAD BEST MODEL:"
-                  "\n----------------")
-
-            # load best model ROC AUC
-            if parser.load_best_ROC_AUC_model:
-                load_best_model(net=net,
-                                metrics_type='accuracy',
-                                path=path['models']['best'])
-
-            # ==== #
-            # TEST #
-            # ==== #
-            print("\n-----"
-                  "\nTEST:"
-                  "\n-----")
-            time_test_start = time.time()
-            test(net=net,
-                 dataloader=dataloader_test,
-                 classifications_path=path['classifications']['test'],
-                 device=device)
-            time_test = time.time() - time_test_start
-
-            # ============== #
-            # METRICS (TEST) #
-            # ============== #
-            time_metrics_test_start = time.time()
-
-            # read classifications test for evaluation (numpy array)
-            classifications_header = ["FILENAME", "PREDICTION", "SCORE", "ANNOTATION"]
-            classifications_test = read_csv(filepath_or_buffer=path['classifications']['test'], usecols=classifications_header).values
-
-            # compute ROC AUC
-            ROC_AUC_test = ROC_AUC(classifications=classifications_test)
-
-            time_metrics_test = time.time() - time_metrics_test_start
-
-            # update performance
-            metrics['ROC_AUC'].append(ROC_AUC_test)
-            metrics['time']['test'].append(time_test)
-            metrics['time']['metrics'].append(time_metrics_test)
-
-            # metrics-test.csv
-            metrics_test_csv(metrics_path=path['metrics']['test'],
-                             metrics=metrics)
-
-            # show
-            show_metrics_test(metrics=metrics)
+    return 0
 
 
 if __name__ == "__main__":

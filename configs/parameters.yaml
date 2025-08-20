@@ -1,0 +1,172 @@
+# ---------- #
+# PARAMETERS #
+# ---------- #
+
+# Parameter structure example:
+parameter_name:
+  default: "Default value"
+  choices: ["option_1", "option_2", "option_3"]
+  help: "Help string"
+
+# Subparser
+mode:
+  choices: ['train', 'resume', 'test']
+  help: "Execution mode (subcommand)."
+train:
+  help: "Start a fresh training run."
+resume:
+  help: "Resume training from a checkpoint."
+test:
+  help: "Evaluate on the test split."
+
+# ----- #
+# DEBUG #
+# ----- #
+verbose_prints:
+  default: false
+  help: "Enable verbose text logs."
+verbose_plots:
+  default: false
+  help: "Enable verbose plots."
+debug:
+  default: false
+  help: "Enable debug mode with extra checks."
+
+# ------- #
+# UTILITY #
+# ------- #
+version:
+  default: "latest"
+  help: "Target the desired version to resume or test. Default value 'latest' target the latest experiment version, otherwise the pattern version_<int> can be specified."
+
+# ------- #
+# DATASET #
+# ------- #
+dataset:
+  default: "my_dataset"
+  choices: ['dataset_1', 'dataset_2', 'dataset_3']
+  help: "Dataset name or path."
+split:
+  default: "./splits/split.csv"
+  choices: ['1-fold', '2-fold', 'example']
+  help: "Path to CSV split file."
+transform:
+  default: "basic"
+  choices: ['none', 'default', 'min-max', 'std']
+  help: "Name of the transform pipeline."
+do_dataset_augmentation:
+  default: false
+  help: "Apply dataset-level augmentation."
+num_classes:
+  default: 2
+  help: "Number of classes for classification."
+image_height:
+  default: 224
+  help: "Input image height."
+image_width:
+  default: 224
+  help: "Input image width."
+
+# ------ #
+# DEVICE #
+# ------ #
+GPU:
+  default: "cuda:0"
+  choices: ['V100', 'A100', 'GTX']
+  help: "Device string."
+num_threads:
+  default: 4
+  help: "Number of torch threads."
+num_workers:
+  default: 4
+  help: "Number of DataLoader workers."
+
+# --------------- #
+# REPRODUCIBILITY #
+# --------------- #
+seed:
+  default: 42
+  help: "Random seed."
+
+# ----------- #
+# DATA LOADER #
+# ----------- #
+batch_size_test:
+  default: 128
+  help: "Batch size for test."
+batch_size_val:
+  default: 128
+  help: "Batch size for validation."
+batch_size_train:
+  default: 64
+  help: "Batch size for training."
+
+# ------- #
+# NETWORK #
+# ------- #
+network_name:
+  default: "MyNet"
+  help: "Model wrapper/name."
+backbone:
+  default: "resnet18"
+  choices: ['ResNet-18', 'ResNet-34', 'ResNet-50', 'ResNet-101', 'ResNet-152']
+  help: "Backbone architecture."
+pretrained:
+  default: true
+  help: "Use pretrained weights when available."
+
+# ---------------- #
+# HYPER-PARAMETERS #
+# ---------------- #
+epochs:
+  default: 100
+  help: "Number of training epochs."
+epoch_to_resume:
+  default: 0
+  help: "Epoch number to resume from."
+optimizer:
+  default: "Adam"
+  choices: ['Adam', 'SGD']
+  help: "Optimizer."
+scheduler:
+  default: "CosineAnnealing"
+  choices: ['ReduceLROnPlateau', 'StepLR', 'CosineAnnealing']
+  help: "Learning-rate scheduler."
+clip_gradient:
+  default: false
+  help: "Enable gradient clipping."
+learning_rate:
+  default: 1e-04
+  help: "Base learning rate."
+lr_momentum:
+  default: 0.9
+  help: "Momentum for SGD."
+lr_patience:
+  default: 10
+  help: "Patience for ReduceLROnPlateau."
+lr_step_size:
+  default: 30
+  help: "Step size for StepLR."
+lr_gamma:
+  default: 0.1
+  help: "Gamma for StepLR."
+lr_T0:
+  default: 50
+  help: "T0 for CosineAnnealing."
+
+# ---- #
+# LOSS #
+# ---- #
+loss:
+  default: "CrossEntropyLoss"
+  choices: ['CrossEntropyLoss', 'BCEWithLogitsLoss', 'FocalLoss']
+  help: "Loss function."
+alpha:
+  default: 0.25
+  help: "Focal loss alpha."
+gamma:
+  default: 2.0
+  help: "Focal loss gamma."
+lambda:
+  default: 1
+  help: "Regularization strength."

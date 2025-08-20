@@ -4,7 +4,6 @@ from typing import Union
 
 from torch.optim import Adam, SGD
 from torch.optim.lr_scheduler import ReduceLROnPlateau, StepLR, CosineAnnealingWarmRestarts
-from net.parameters.parameters_choices import parameters_choices
 
 
 def get_scheduler(optimizer: Union[Adam, SGD],
@@ -41,6 +40,6 @@ def get_scheduler(optimizer: Union[Adam, SGD],
                                                 T_0=parser.lr_T0)
 
     else:
-        raise ValueError(f"Unknown scheduler in {__file__}. Choices are {parameters_choices['scheduler']}, but got {parser.scheduler} instead")
+        raise ValueError(f"Unknown scheduler in {__file__}. Got {parser.scheduler}.")
 
     return scheduler
