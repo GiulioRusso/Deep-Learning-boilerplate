@@ -43,7 +43,7 @@ def main():
     exp_dir = os.path.join("experiments", exp_ID)
 
     # path initialization
-    path = get_yaml(yaml_path=os.path.join("config.yaml", "paths.yaml"))
+    path = get_yaml(yaml_path=os.path.join("configs", "paths.yaml"))
 
     # ====== #
     # DEVICE #

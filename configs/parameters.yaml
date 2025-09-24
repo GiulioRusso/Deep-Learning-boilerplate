@@ -43,15 +43,15 @@ version:
 # DATASET #
 # ------- #
 dataset:
-  default: "my_dataset"
+  default: "dataset_1"
   choices: ['dataset_1', 'dataset_2', 'dataset_3']
-  help: "Dataset name or path."
+  help: "Dataset name."
 split:
-  default: "./splits/split.csv"
+  default: "example"
   choices: ['1-fold', '2-fold', 'example']
   help: "Path to CSV split file."
 transform:
-  default: "basic"
+  default: "none"
   choices: ['none', 'default', 'min-max', 'std']
   help: "Name of the transform pipeline."
 do_dataset_augmentation:
