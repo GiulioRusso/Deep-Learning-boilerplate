@@ -32,7 +32,7 @@ def main():
     # PARAMETERS-PARSING #
     # ================== #
     # command line parameter parsing
-    parser = parameters_parsing(parameters_path=os.path.join("config.yaml", "parameters.yaml"))
+    parser = parameters_parsing(parameters_path=os.path.join("configs", "parameters.yaml"))
 
     # ============== #
     # INITIALIZATION #
